@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hyperlinks and the Web Graph</title>
+    <style>
+      :root {
+        --ink: #1c1b19;
+        --muted: #5f5b55;
+        --paper: #f8f4ef;
+        --paper-dark: #efe4d3;
+        --accent: #e4572e;
+        --accent-2: #1d7874;
+        --accent-3: #f4d35e;
+        --edge: #9c8f7a;
+        --shadow: rgba(28, 27, 25, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Gill Sans", "Trebuchet MS", Verdana, sans-serif;
+        color: var(--ink);
+        background: radial-gradient(circle at top left, #fff8ee 0%, var(--paper) 55%, var(--paper-dark) 100%);
+        min-height: 100vh;
+      }
+
+      .page {
+        position: relative;
+        overflow: hidden;
+        padding-bottom: 4rem;
+      }
+
+      .page::before,
+      .page::after {
+        content: "";
+        position: absolute;
+        width: 520px;
+        height: 520px;
+        border-radius: 50%;
+        background: conic-gradient(from 30deg, rgba(228, 87, 46, 0.15), rgba(29, 120, 116, 0.12), rgba(244, 211, 94, 0.12));
+        filter: blur(2px);
+        z-index: 0;
+      }
+
+      .page::before {
+        top: -220px;
+        right: -140px;
+      }
+
+      .page::after {
+        bottom: -260px;
+        left: -200px;
+      }
+
+      main {
+        position: relative;
+        z-index: 1;
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 3.5rem 1.5rem 0;
+        display: flex;
+        flex-direction: column;
+        gap: 3rem;
+      }
+
+      header {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+        gap: 2rem;
+        align-items: center;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: "Baskerville", "Palatino Linotype", "Book Antiqua", serif;
+        letter-spacing: 0.02em;
+        margin: 0 0 0.8rem;
+      }
+
+      h1 {
+        font-size: clamp(2.5rem, 3vw + 1rem, 3.8rem);
+      }
+
+      p {
+        line-height: 1.6;
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .hero-card {
+        padding: 2rem;
+        border-radius: 24px;
+        background: white;
+        box-shadow: 0 20px 45px var(--shadow);
+        display: grid;
+        gap: 1rem;
+      }
+
+      .hero-card strong {
+        color: var(--ink);
+      }
+
+      .hero-graphic {
+        background: linear-gradient(135deg, rgba(29, 120, 116, 0.18), rgba(228, 87, 46, 0.18));
+        border-radius: 28px;
+        padding: 2rem;
+        display: grid;
+        gap: 1rem;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.9rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink);
+        background: rgba(244, 211, 94, 0.5);
+        padding: 0.35rem 0.75rem;
+        border-radius: 999px;
+        width: fit-content;
+      }
+
+      .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.2rem;
+      }
+
+      .stat-card {
+        padding: 1.4rem;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid rgba(28, 27, 25, 0.08);
+      }
+
+      .stat-card h3 {
+        margin-bottom: 0.4rem;
+        font-size: 1.2rem;
+      }
+
+      .graph-section {
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+        gap: 2rem;
+        align-items: start;
+      }
+
+      .graph-card {
+        background: white;
+        border-radius: 26px;
+        padding: 1.5rem;
+        box-shadow: 0 18px 40px var(--shadow);
+        display: grid;
+        gap: 1rem;
+      }
+
+      .graph-wrap {
+        background: linear-gradient(180deg, rgba(248, 244, 239, 0.9), rgba(248, 244, 239, 0.6));
+        border-radius: 20px;
+        padding: 1rem;
+        border: 1px solid rgba(28, 27, 25, 0.08);
+      }
+
+      svg {
+        width: 100%;
+        height: 360px;
+      }
+
+      .node circle {
+        fill: white;
+        stroke: var(--ink);
+        stroke-width: 2;
+        transition: transform 0.2s ease, fill 0.2s ease;
+      }
+
+      .node text {
+        font-weight: 600;
+        fill: var(--ink);
+      }
+
+      .node.active circle {
+        fill: var(--accent-3);
+        transform: scale(1.08);
+      }
+
+      .edge {
+        stroke: var(--edge);
+        stroke-width: 2;
+        opacity: 0.6;
+        marker-end: url(#arrow);
+        transition: stroke 0.2s ease, opacity 0.2s ease;
+      }
+
+      .edge.outgoing {
+        stroke: var(--accent);
+        opacity: 0.95;
+      }
+
+      .edge.incoming {
+        stroke: var(--accent-2);
+        opacity: 0.95;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+      }
+
+      .legend i {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+
+      .panel {
+        background: rgba(255, 255, 255, 0.88);
+        border-radius: 22px;
+        padding: 1.5rem;
+        border: 1px solid rgba(28, 27, 25, 0.08);
+        display: grid;
+        gap: 1rem;
+      }
+
+      .panel h3 {
+        margin-bottom: 0.2rem;
+      }
+
+      .panel strong {
+        color: var(--ink);
+      }
+
+      .list {
+        margin: 0;
+        padding-left: 1.2rem;
+        color: var(--muted);
+      }
+
+      .code-block {
+        font-family: "Courier New", Courier, monospace;
+        background: rgba(29, 120, 116, 0.08);
+        border-radius: 16px;
+        padding: 1rem;
+        font-size: 0.92rem;
+        color: var(--ink);
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.8rem;
+      }
+
+      button {
+        border: none;
+        background: var(--accent);
+        color: white;
+        padding: 0.7rem 1.1rem;
+        font-size: 0.9rem;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      button.secondary {
+        background: var(--accent-2);
+      }
+
+      button:active {
+        transform: translateY(1px);
+      }
+
+      .grid-two {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 1.2rem;
+      }
+
+      .concept-card {
+        padding: 1.2rem;
+        border-radius: 18px;
+        background: white;
+        border: 1px solid rgba(28, 27, 25, 0.08);
+      }
+
+      .concept-card h3 {
+        font-size: 1.15rem;
+      }
+
+      footer {
+        text-align: center;
+        color: var(--muted);
+        padding: 2rem 1.5rem 3rem;
+      }
+
+      @media (max-width: 900px) {
+        header,
+        .graph-section {
+          grid-template-columns: 1fr;
+        }
+
+        svg {
+          height: 320px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <main>
+        <header>
+          <div class="hero-card">
+            <span class="pill">Interactive lesson</span>
+            <h1>Hyperlinks and the Web Graph</h1>
+            <p>
+              Every hyperlink is a bridge from one page to another. When you
+              connect millions of pages with these bridges, you get the web graph:
+              a living network of nodes (pages) and edges (links).
+            </p>
+            <p>
+              Explore the graph below to see how navigation, authority, and
+              discovery are shaped by links.
+            </p>
+          </div>
+          <div class="hero-graphic">
+            <h2>Key idea</h2>
+            <p>
+              A page with many incoming links is easy to find. A page with many
+              outgoing links can guide you to other topics.
+            </p>
+            <div class="stat-grid">
+              <div class="stat-card">
+                <h3>Nodes</h3>
+                <p>Pages, articles, products, videos.</p>
+              </div>
+              <div class="stat-card">
+                <h3>Edges</h3>
+                <p>Hyperlinks that move you from one node to another.</p>
+              </div>
+              <div class="stat-card">
+                <h3>Paths</h3>
+                <p>Sequences of links that tell a story of discovery.</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <section class="graph-section">
+          <div class="graph-card">
+            <h2>Explore a Mini Web Graph</h2>
+            <p>Click a page to highlight its outgoing and incoming links.</p>
+            <div class="graph-wrap">
+              <svg viewBox="0 0 560 360" role="img" aria-label="Mini web graph">
+                <defs>
+                  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#9c8f7a"></path>
+                  </marker>
+                </defs>
+                <g class="edges">
+                  <line class="edge" data-source="A" data-target="B" x1="120" y1="60" x2="280" y2="60"></line>
+                  <line class="edge" data-source="A" data-target="C" x1="120" y1="60" x2="200" y2="180"></line>
+                  <line class="edge" data-source="B" data-target="D" x1="280" y1="60" x2="420" y2="160"></line>
+                  <line class="edge" data-source="C" data-target="B" x1="200" y1="180" x2="280" y2="60"></line>
+                  <line class="edge" data-source="C" data-target="E" x1="200" y1="180" x2="280" y2="300"></line>
+                  <line class="edge" data-source="D" data-target="E" x1="420" y1="160" x2="280" y2="300"></line>
+                  <line class="edge" data-source="E" data-target="A" x1="280" y1="300" x2="120" y2="60"></line>
+                </g>
+                <g class="nodes">
+                  <g class="node" data-id="A" transform="translate(120 60)">
+                    <circle r="28"></circle>
+                    <text text-anchor="middle" dy="6">A</text>
+                  </g>
+                  <g class="node" data-id="B" transform="translate(280 60)">
+                    <circle r="28"></circle>
+                    <text text-anchor="middle" dy="6">B</text>
+                  </g>
+                  <g class="node" data-id="C" transform="translate(200 180)">
+                    <circle r="28"></circle>
+                    <text text-anchor="middle" dy="6">C</text>
+                  </g>
+                  <g class="node" data-id="D" transform="translate(420 160)">
+                    <circle r="28"></circle>
+                    <text text-anchor="middle" dy="6">D</text>
+                  </g>
+                  <g class="node" data-id="E" transform="translate(280 300)">
+                    <circle r="28"></circle>
+                    <text text-anchor="middle" dy="6">E</text>
+                  </g>
+                </g>
+              </svg>
+            </div>
+            <div class="legend">
+              <span><i style="background: var(--accent)"></i> Outgoing links</span>
+              <span><i style="background: var(--accent-2)"></i> Incoming links</span>
+              <span><i style="background: var(--accent-3)"></i> Selected page</span>
+            </div>
+          </div>
+          <div class="panel" id="infoPanel">
+            <div>
+              <h3>You are on page <strong id="currentPage">A</strong></h3>
+              <p id="pageSummary">This page links out to two other pages.</p>
+            </div>
+            <div>
+              <strong>Outgoing links</strong>
+              <ul class="list" id="outgoingList"></ul>
+            </div>
+            <div>
+              <strong>Incoming links</strong>
+              <ul class="list" id="incomingList"></ul>
+            </div>
+            <div class="button-row">
+              <button id="randomClick">Take a random click</button>
+              <button class="secondary" id="resetView">Reset view</button>
+            </div>
+            <div>
+              <strong>Adjacency list</strong>
+              <div class="code-block" id="adjacency"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="grid-two">
+          <div class="concept-card">
+            <h3>Why the graph matters</h3>
+            <p>
+              Search engines estimate importance by analyzing incoming links. A
+              page linked by many trusted pages gains authority.
+            </p>
+          </div>
+          <div class="concept-card">
+            <h3>Discovery trails</h3>
+            <p>
+              Users rarely jump randomly. They follow cues, menus, and reference
+              links. Each click creates a path through the graph.
+            </p>
+          </div>
+          <div class="concept-card">
+            <h3>Designing link maps</h3>
+            <p>
+              Thoughtful linking helps readers explore deeper. Balance outgoing
+              links so pages guide rather than overwhelm.
+            </p>
+          </div>
+          <div class="concept-card">
+            <h3>Graph vocabulary</h3>
+            <p>
+              Nodes = pages. Edges = hyperlinks. Degree = number of links. Paths
+              = sequences of edges.
+            </p>
+          </div>
+        </section>
+      </main>
+    </div>
+    <footer>
+      Built as a short visual guide to how hyperlinks create the web graph.
+    </footer>
+    <script>
+      const nodes = ["A", "B", "C", "D", "E"];
+      const links = [
+        { source: "A", target: "B" },
+        { source: "A", target: "C" },
+        { source: "B", target: "D" },
+        { source: "C", target: "B" },
+        { source: "C", target: "E" },
+        { source: "D", target: "E" },
+        { source: "E", target: "A" },
+      ];
+
+      const nodeEls = document.querySelectorAll(".node");
+      const edgeEls = document.querySelectorAll(".edge");
+      const currentPage = document.getElementById("currentPage");
+      const pageSummary = document.getElementById("pageSummary");
+      const outgoingList = document.getElementById("outgoingList");
+      const incomingList = document.getElementById("incomingList");
+      const adjacency = document.getElementById("adjacency");
+      const randomClick = document.getElementById("randomClick");
+      const resetView = document.getElementById("resetView");
+
+      const buildAdjacency = () => {
+        const map = nodes.reduce((acc, node) => {
+          acc[node] = links.filter((link) => link.source === node).map((link) => link.target);
+          return acc;
+        }, {});
+        adjacency.textContent = nodes
+          .map((node) => `${node}: [${map[node].join(", ")}]`)
+          .join("\n");
+      };
+
+      const updatePanel = (selected) => {
+        const outgoing = links.filter((link) => link.source === selected).map((link) => link.target);
+        const incoming = links.filter((link) => link.target === selected).map((link) => link.source);
+
+        currentPage.textContent = selected;
+        pageSummary.textContent =
+          outgoing.length === 0
+            ? "This page has no outgoing links."
+            : outgoing.length === 1
+            ? "This page links out to one other page."
+            : `This page links out to ${outgoing.length} other pages.`;
+
+        outgoingList.innerHTML = outgoing.map((node) => `<li>${node}</li>`).join("") || "<li>None</li>";
+        incomingList.innerHTML = incoming.map((node) => `<li>${node}</li>`).join("") || "<li>None</li>";
+      };
+
+      const highlightGraph = (selected) => {
+        nodeEls.forEach((node) => {
+          node.classList.toggle("active", node.dataset.id === selected);
+        });
+
+        edgeEls.forEach((edge) => {
+          const isOutgoing = edge.dataset.source === selected;
+          const isIncoming = edge.dataset.target === selected;
+          edge.classList.toggle("outgoing", isOutgoing);
+          edge.classList.toggle("incoming", isIncoming);
+          edge.style.opacity = isOutgoing || isIncoming ? "0.95" : "0.25";
+        });
+      };
+
+      const selectNode = (selected) => {
+        updatePanel(selected);
+        highlightGraph(selected);
+      };
+
+      nodeEls.forEach((node) => {
+        node.addEventListener("click", () => selectNode(node.dataset.id));
+      });
+
+      randomClick.addEventListener("click", () => {
+        const current = currentPage.textContent;
+        const options = links.filter((link) => link.source === current).map((link) => link.target);
+        const next = options.length ? options[Math.floor(Math.random() * options.length)] : nodes[Math.floor(Math.random() * nodes.length)];
+        selectNode(next);
+      });
+
+      resetView.addEventListener("click", () => {
+        selectNode("A");
+      });
+
+      buildAdjacency();
+      selectNode("A");
+    </script>
+  </body>
+</html>
