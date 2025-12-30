@@ -376,13 +376,12 @@
                   </marker>
                 </defs>
                 <g class="edges">
-                  <line class="edge" data-source="A" data-target="B" x1="120" y1="60" x2="280" y2="60"></line>
-                  <line class="edge" data-source="A" data-target="C" x1="120" y1="60" x2="200" y2="180"></line>
-                  <line class="edge" data-source="B" data-target="D" x1="280" y1="60" x2="420" y2="160"></line>
-                  <line class="edge" data-source="C" data-target="B" x1="200" y1="180" x2="280" y2="60"></line>
-                  <line class="edge" data-source="C" data-target="E" x1="200" y1="180" x2="280" y2="300"></line>
-                  <line class="edge" data-source="D" data-target="E" x1="420" y1="160" x2="280" y2="300"></line>
-                  <line class="edge" data-source="E" data-target="A" x1="280" y1="300" x2="120" y2="60"></line>
+                  <line class="edge" data-source="A" data-target="C" x1="138" y1="82" x2="185" y2="162"></line>
+                  <line class="edge" data-source="B" data-target="A" x1="252" y1="60" x2="148" y2="60"></line>
+                  <line class="edge" data-source="B" data-target="D" x1="305" y1="75" x2="395" y2="145"></line>
+                  <path class="edge" data-source="C" data-target="A" d="M 185 162 Q 130 120 138 82" fill="none"></path>
+                  <line class="edge" data-source="C" data-target="D" x1="228" y1="178" x2="392" y2="162"></line>
+                  <path class="edge" data-source="D" data-target="D" d="M 448 160 Q 480 120 480 160 Q 480 200 448 160" fill="none"></path>
                 </g>
                 <g class="nodes">
                   <g class="node" data-id="A" transform="translate(120 60)">
@@ -400,10 +399,6 @@
                   <g class="node" data-id="D" transform="translate(420 160)">
                     <circle r="28"></circle>
                     <text text-anchor="middle" dy="6">D</text>
-                  </g>
-                  <g class="node" data-id="E" transform="translate(280 300)">
-                    <circle r="28"></circle>
-                    <text text-anchor="middle" dy="6">E</text>
                   </g>
                 </g>
               </svg>
@@ -473,90 +468,6 @@
     <footer>
       Built as a short visual guide to how hyperlinks create the web graph.
     </footer>
-    <script>
-      const nodes = ["A", "B", "C", "D", "E"];
-      const links = [
-        { source: "A", target: "B" },
-        { source: "A", target: "C" },
-        { source: "B", target: "D" },
-        { source: "C", target: "B" },
-        { source: "C", target: "E" },
-        { source: "D", target: "E" },
-        { source: "E", target: "A" },
-      ];
-
-      const nodeEls = document.querySelectorAll(".node");
-      const edgeEls = document.querySelectorAll(".edge");
-      const currentPage = document.getElementById("currentPage");
-      const pageSummary = document.getElementById("pageSummary");
-      const outgoingList = document.getElementById("outgoingList");
-      const incomingList = document.getElementById("incomingList");
-      const adjacency = document.getElementById("adjacency");
-      const randomClick = document.getElementById("randomClick");
-      const resetView = document.getElementById("resetView");
-
-      const buildAdjacency = () => {
-        const map = nodes.reduce((acc, node) => {
-          acc[node] = links.filter((link) => link.source === node).map((link) => link.target);
-          return acc;
-        }, {});
-        adjacency.textContent = nodes
-          .map((node) => `${node}: [${map[node].join(", ")}]`)
-          .join("\n");
-      };
-
-      const updatePanel = (selected) => {
-        const outgoing = links.filter((link) => link.source === selected).map((link) => link.target);
-        const incoming = links.filter((link) => link.target === selected).map((link) => link.source);
-
-        currentPage.textContent = selected;
-        pageSummary.textContent =
-          outgoing.length === 0
-            ? "This page has no outgoing links."
-            : outgoing.length === 1
-            ? "This page links out to one other page."
-            : `This page links out to ${outgoing.length} other pages.`;
-
-        outgoingList.innerHTML = outgoing.map((node) => `<li>${node}</li>`).join("") || "<li>None</li>";
-        incomingList.innerHTML = incoming.map((node) => `<li>${node}</li>`).join("") || "<li>None</li>";
-      };
-
-      const highlightGraph = (selected) => {
-        nodeEls.forEach((node) => {
-          node.classList.toggle("active", node.dataset.id === selected);
-        });
-
-        edgeEls.forEach((edge) => {
-          const isOutgoing = edge.dataset.source === selected;
-          const isIncoming = edge.dataset.target === selected;
-          edge.classList.toggle("outgoing", isOutgoing);
-          edge.classList.toggle("incoming", isIncoming);
-          edge.style.opacity = isOutgoing || isIncoming ? "0.95" : "0.25";
-        });
-      };
-
-      const selectNode = (selected) => {
-        updatePanel(selected);
-        highlightGraph(selected);
-      };
-
-      nodeEls.forEach((node) => {
-        node.addEventListener("click", () => selectNode(node.dataset.id));
-      });
-
-      randomClick.addEventListener("click", () => {
-        const current = currentPage.textContent;
-        const options = links.filter((link) => link.source === current).map((link) => link.target);
-        const next = options.length ? options[Math.floor(Math.random() * options.length)] : nodes[Math.floor(Math.random() * nodes.length)];
-        selectNode(next);
-      });
-
-      resetView.addEventListener("click", () => {
-        selectNode("A");
-      });
-
-      buildAdjacency();
-      selectNode("A");
-    </script>
+    <script src="graph.js"></script>
   </body>
 </html>
